@@ -1,0 +1,10 @@
+{
+  "name": "GUKORA Invest & Earn",
+  "short_name": "GUKORA",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f5f7f6",
+  "theme_color": "#063b2c",
+  "description": "GUKORA Invest & Earn",
+  "icons": []
+}
