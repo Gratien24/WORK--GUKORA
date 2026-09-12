@@ -30,7 +30,7 @@ header{background:#fff;border-bottom:1px solid #e4e9e6;padding:15px 6%;display:f
 <div class="card"><h3>2. Choose</h3><p>Select an available investment plan and review its terms.</p></div>
 <div class="card"><h3>3. Deposit</h3><p>Deposit status is recorded by the backend; connect a licensed payment provider before real money is accepted.</p></div></div></section>
 
-<section id="plans" class="section"><h2>Investment Plans</h2><div class="grid">
+<section id="plans" class="section"><h2>Investment Plans</h2><p class="muted">Demo only: displayed returns are examples, not promises or guarantees. Do not send real money until a licensed payment provider, legal terms, and a persistent production database are configured.</p><div class="grid">
 <div class="card"><h3>Starter</h3><p>From <b>3,000 Frw</b></p><button class="btn primary" onclick="show('register')">Choose</button></div>
 <div class="card"><h3>Growth</h3><p>From <b>20,000 Frw</b></p><button class="btn primary" onclick="show('register')">Choose</button></div>
 <div class="card"><h3>Custom</h3><p>Terms agreed before activation.</p><button class="btn primary" onclick="show('register')">Choose</button></div></div></section>
@@ -76,7 +76,7 @@ async function renderAdmin(){
  panel.innerHTML='<hr><h3>Admin Dashboard</h3><p><b>Users:</b> '+us.length+' &nbsp; <b>Transactions:</b> '+ts.length+'</p>'+
  '<h4>Users</h4>'+(us.length?us.map(x=>'<div class="card"><b>'+x.name+'</b><br>'+x.email+' · '+x.phone+'<br>Balance: '+x.balance+' Frw</div><br>').join(''):'<p>No users.</p>')+
  '<h4>Recent Transactions</h4>'+(ts.length?ts.slice(0,30).map(x=>'<div class="card"><b>'+x.type+'</b><br>'+x.amount+' Frw · <b>'+x.status+'</b>'+
- (x.status==='PENDING'?' <button class="btn primary" onclick="adminTxAction(\''+x.id+'\',\'APPROVE\')">Approve</button> <button class="btn" onclick="adminTxAction(\''+x.id+'\',\'REJECT\')">Reject</button>':'')+
+ (x.status==='PENDING'?(x.type==='DEPOSIT'?' <span class="muted">Awaiting verified payment — approval disabled until a real payment provider confirms it.</span>':' <button class="btn primary" onclick="adminTxAction(\''+x.id+'\',\'APPROVE\')">Approve</button>')+' <button class="btn" onclick="adminTxAction(\''+x.id+'\',\'REJECT\')">Reject</button>':'')+
  '</div><br>').join(''):'<p>No transactions.</p>');
 }
 async function adminTxAction(id,decision){
@@ -125,4 +125,7 @@ async function profile(){let r=await get('profile');panel.innerHTML=`<h2>Profile
 async function logout(){await post({action:'logout'});show('home')}
 if(new URLSearchParams(location.search).get('reset'))show('reset');
 
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+}
 </script></body></html>

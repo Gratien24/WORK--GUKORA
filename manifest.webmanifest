@@ -1,10 +1,24 @@
 {
   "name": "GUKORA Invest & Earn",
   "short_name": "GUKORA",
-  "start_url": "./",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#f5f7f6",
   "theme_color": "#063b2c",
-  "description": "GUKORA Invest & Earn",
-  "icons": []
+  "description": "GUKORA account dashboard and investment demo.",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
 }

@@ -1,7 +1,15 @@
 {
-  "name":"work-gukora-render",
-  "private":true,
-  "type":"module",
-  "scripts":{"start":"node server.mjs"},
-  "dependencies":{"cookie-parser":"^1.4.7","express":"^5.1.0"}
+  "name": "work-gukora-render",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "express": "^5.1.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
 }

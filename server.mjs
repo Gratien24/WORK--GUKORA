@@ -8,7 +8,10 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const DB_FILE = path.join(DATA_DIR, 'store.json');
-const SESSION_SECRET = process.env.SESSION_SECRET || 'WORK-GUKORA-SESSION-SECRET-CHANGE-ME';
+const SESSION_SECRET = process.env.SESSION_SECRET || '';
+if (process.env.NODE_ENV === 'production' && SESSION_SECRET.length < 32) {
+  throw new Error('SESSION_SECRET must be configured in production.');
+}
 
 async function loadStore(){
   await fs.mkdir(DATA_DIR,{recursive:true});
@@ -37,7 +40,11 @@ app.set('trust proxy',1);
 app.use(cookieParser());
 app.use(express.json({limit:'1mb'}));
 app.use(express.urlencoded({extended:false}));
-app.use(express.static(__dirname));
+app.use(express.static(__dirname, { index: 'index.html' }));
+
+app.get('/health', (req, res) => {
+  res.status(200).json({ ok: true, message: 'WORK backend is online on Render.' });
+});
 
 function hashPassword(p){const s=crypto.randomBytes(16).toString('hex');return `${s}:${crypto.scryptSync(p,s,64).toString('hex')}`}
 function verifyPassword(p,v){try{const [s,h]=String(v||'').split(':');if(!s||!h||h.length!==128)return false;const x=crypto.scryptSync(p,s,64).toString('hex');return crypto.timingSafeEqual(Buffer.from(x,'hex'),Buffer.from(h,'hex'))}catch{return false}}
@@ -79,6 +86,7 @@ async function handle(req,res){
   if(action==='admin_login'){
    const email=String(body.email||'').trim().toLowerCase(),password=String(body.password||'');
    if(!process.env.ADMIN_EMAIL||!process.env.ADMIN_PASSWORD)return json(res,{ok:false,message:'Admin access is not configured. Add ADMIN_EMAIL and ADMIN_PASSWORD in Render Environment Variables.'},503);
+   if(String(process.env.ADMIN_PASSWORD).length < 12)return json(res,{ok:false,message:'ADMIN_PASSWORD must be at least 12 characters.'},503);
    if(email!==String(process.env.ADMIN_EMAIL).trim().toLowerCase()||password!==String(process.env.ADMIN_PASSWORD))return json(res,{ok:false,message:'Invalid admin credentials.'},401);
    setCookie(res,'work_admin',{admin:true,exp:Date.now()+3600000},3600000);return json(res,{ok:true,message:'Admin login successful.'});
   }
@@ -97,6 +105,8 @@ async function handle(req,res){
    const target=await user(t.userId);if(!target)return json(res,{ok:false,message:'User account not found.'},404);
    if(decision==='REJECT'){t.status='REJECTED';t.reviewed_at=new Date().toISOString();t.reviewed_by='ADMIN';await set(`tx:${t.id}`,t);return json(res,{ok:true,message:'Transaction rejected.'})}
    const amount=Math.floor(Number(t.amount||0));if(!Number.isFinite(amount)||amount<0)return json(res,{ok:false,message:'Invalid transaction amount.'},400);
+   // Deposits require real payment-provider verification; admin clicks alone cannot create money.
+   if(t.type==='DEPOSIT' && t.payment_verified!==true)return json(res,{ok:false,message:'Deposit cannot be approved: no verified real payment was received.'},400);
    if(t.type==='DEPOSIT')target.balance=(target.balance||0)+amount;else if(t.type==='WITHDRAWAL'){if(amount>(target.balance||0))return json(res,{ok:false,message:'User no longer has enough available balance.'},400);target.balance=(target.balance||0)-amount}else return json(res,{ok:false,message:'Unsupported transaction type.'},400);
    await set(`user:${target.id}`,target);t.status='APPROVED';t.reviewed_at=new Date().toISOString();t.reviewed_by='ADMIN';await set(`tx:${t.id}`,t);return json(res,{ok:true,message:'Transaction approved.'});
   }
