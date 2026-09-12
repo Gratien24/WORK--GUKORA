@@ -9,7 +9,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const DB_FILE = path.join(DATA_DIR, 'store.json');
 const SESSION_SECRET = process.env.SESSION_SECRET || '';
-if (process.env.NODE_ENV === 'production' && SESSION_SECRET.length < 32) {
+if (process.env.RENDER === 'true' && SESSION_SECRET.length < 32) {
   throw new Error('SESSION_SECRET must be configured in production.');
 }
 
@@ -92,6 +92,21 @@ async function handle(req,res){
   }
   if(action==='admin_logout'){clearCookie(res,'work_admin');return json(res,{ok:true,message:'Admin logged out.'})}
   if(action==='logout'){clearCookie(res,'work_session');return json(res,{ok:true,message:'Logged out.'})}
+  if(action==='admin_payment_methods'){
+   if(!adminSess(req))return json(res,{ok:false,message:'Admin login required.'},401);
+   return json(res,{ok:true,methods:(await get('payment_methods'))||[]});
+  }
+  if(action==='admin_payment_method_save'){
+   if(!adminSess(req))return json(res,{ok:false,message:'Admin login required.'},401);
+   const name=String(body.name||'').trim(),account=String(body.account||'').trim(),holder=String(body.holder||'').trim(),instructions=String(body.instructions||'').trim();
+   if(!name||!account||!holder)return json(res,{ok:false,message:'Name, account/number and account name are required.'},400);
+   const methods=(await get('payment_methods'))||[]; const id=String(body.id||crypto.randomUUID()); const item={id,name,account,holder,instructions,enabled:body.enabled!==false,updated_at:new Date().toISOString()}; const i=methods.findIndex(x=>x.id===id); if(i>=0)methods[i]=item; else methods.unshift(item); await set('payment_methods',methods.slice(0,50)); return json(res,{ok:true,message:'Payment method saved.'});
+  }
+  if(action==='admin_payment_method_delete'){
+   if(!adminSess(req))return json(res,{ok:false,message:'Admin login required.'},401);
+   const id=String(body.id||''); const methods=((await get('payment_methods'))||[]).filter(x=>x.id!==id); await set('payment_methods',methods); return json(res,{ok:true,message:'Payment method deleted.'});
+  }
+  if(action==='payment_methods')return json(res,{ok:true,methods:((await get('payment_methods'))||[]).filter(x=>x.enabled!==false)});
   if(action==='admin_dashboard'){
    if(!adminSess(req))return json(res,{ok:false,message:'Admin login required.'},401);
    const ids=(await get('allusers'))||[],users=[];for(const id of ids){const x=await user(id);if(x)users.push(cleanUser(x))}
@@ -104,10 +119,11 @@ async function handle(req,res){
    const t=await get(`tx:${id}`);if(!t)return json(res,{ok:false,message:'Transaction not found.'},404);if(t.status!=='PENDING')return json(res,{ok:false,message:`Transaction is already ${t.status}.`},409);
    const target=await user(t.userId);if(!target)return json(res,{ok:false,message:'User account not found.'},404);
    if(decision==='REJECT'){t.status='REJECTED';t.reviewed_at=new Date().toISOString();t.reviewed_by='ADMIN';await set(`tx:${t.id}`,t);return json(res,{ok:true,message:'Transaction rejected.'})}
-   const amount=Math.floor(Number(t.amount||0));if(!Number.isFinite(amount)||amount<0)return json(res,{ok:false,message:'Invalid transaction amount.'},400);
-   // Deposits require real payment-provider verification; admin clicks alone cannot create money.
-   if(t.type==='DEPOSIT' && t.payment_verified!==true)return json(res,{ok:false,message:'Deposit cannot be approved: no verified real payment was received.'},400);
-   if(t.type==='DEPOSIT')target.balance=(target.balance||0)+amount;else if(t.type==='WITHDRAWAL'){if(amount>(target.balance||0))return json(res,{ok:false,message:'User no longer has enough available balance.'},400);target.balance=(target.balance||0)-amount}else return json(res,{ok:false,message:'Unsupported transaction type.'},400);
+   const amount=Math.floor(Number(t.amount||0));if(!Number.isFinite(amount)||amount<=0)return json(res,{ok:false,message:'Invalid transaction amount.'},400);
+   if(t.type==='DEPOSIT')target.balance=(target.balance||0)+amount;
+   else if(t.type==='WITHDRAWAL'){if(amount>(target.balance||0))return json(res,{ok:false,message:'User no longer has enough available balance.'},400);target.balance=(target.balance||0)-amount}
+   else if(t.type==='INVESTMENT'){target.investment=(target.investment||0)+amount}
+   else return json(res,{ok:false,message:'Unsupported transaction type.'},400);
    await set(`user:${target.id}`,target);t.status='APPROVED';t.reviewed_at=new Date().toISOString();t.reviewed_by='ADMIN';await set(`tx:${t.id}`,t);return json(res,{ok:true,message:'Transaction approved.'});
   }
   if(action==='forgot_password')return json(res,{ok:true,message:'Request received. Please contact WORK Support on WhatsApp to complete your password reset.'});
@@ -116,8 +132,9 @@ async function handle(req,res){
   if(action==='dashboard')return json(res,{ok:true,user:cleanUser(u),transactions:(await txs(u.id)).slice(0,10)});
   if(action==='transactions')return json(res,{ok:true,rows:await txs(u.id)});
   if(action==='profile')return json(res,{ok:true,user:cleanUser(u)});
-  if(action==='deposit'){const a=Math.floor(Number(body.amount||0));if(a<3000)return json(res,{ok:false,message:'Minimum deposit is 3,000 Frw.'},400);await tx(u.id,'DEPOSIT',a);return json(res,{ok:true,message:'Deposit request recorded as PENDING. No real payment was processed.'})}
+  if(action==='deposit'){const a=Math.floor(Number(body.amount||0));if(a<3000)return json(res,{ok:false,message:'Minimum deposit is 3,000 Frw.'},400);const pm=String(body.paymentMethodId||'');const methods=((await get('payment_methods'))||[]).filter(x=>x.enabled!==false);if(pm&&!methods.some(x=>x.id===pm))return json(res,{ok:false,message:'Selected payment method is unavailable.'},400);const t=await tx(u.id,'DEPOSIT',a);t.paymentMethodId=pm;t.reference=String(body.reference||'').trim();await set(`tx:${t.id}`,t);return json(res,{ok:true,message:'Deposit request recorded as PENDING. No real payment was processed.'})}
   if(action==='withdraw'){const a=Math.floor(Number(body.amount||0));if(a<3000)return json(res,{ok:false,message:'Minimum withdrawal is 3,000 Frw.'},400);if(a>(u.balance||0))return json(res,{ok:false,message:'Insufficient available balance.'},400);await tx(u.id,'WITHDRAWAL',a);return json(res,{ok:true,message:'Withdrawal request recorded as PENDING.'})}
+  if(action==='investment_request'){const a=Math.floor(Number(body.amount||0));const pm=String(body.paymentMethodId||'');const ref=String(body.reference||'').trim();if(a<3000)return json(res,{ok:false,message:'Minimum investment is 3,000 Frw.'},400);const methods=((await get('payment_methods'))||[]).filter(x=>x.enabled!==false);const method=methods.find(x=>x.id===pm);if(!method)return json(res,{ok:false,message:'Please select an available payment method.'},400);if(!ref)return json(res,{ok:false,message:'Enter the payment/reference number after payment.'},400);const t=await tx(u.id,'INVESTMENT',a);t.paymentMethodId=pm;t.paymentMethod=method.name;t.reference=ref;await set(`tx:${t.id}`,t);return json(res,{ok:true,message:'Investment payment submitted as PENDING. Admin will verify the payment before activation.'})}
   return json(res,{ok:false,message:'Unknown action.'},404);
  }catch(e){console.error(e);return json(res,{ok:false,message:'Server error. Check Render logs.'},500)}
 }

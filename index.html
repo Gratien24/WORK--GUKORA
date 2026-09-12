@@ -73,10 +73,12 @@ async function renderAdmin(){
  if(!d.ok){msg.innerHTML='<div class="msg danger">'+(d.message||'Could not load admin dashboard.')+'</div>';return;}
  const us=d.users||[], ts=d.transactions||[];
  panel.classList.remove('hidden');
+ const pm=await get('admin_payment_methods');
  panel.innerHTML='<hr><h3>Admin Dashboard</h3><p><b>Users:</b> '+us.length+' &nbsp; <b>Transactions:</b> '+ts.length+'</p>'+
- '<h4>Users</h4>'+(us.length?us.map(x=>'<div class="card"><b>'+x.name+'</b><br>'+x.email+' · '+x.phone+'<br>Balance: '+x.balance+' Frw</div><br>').join(''):'<p>No users.</p>')+
- '<h4>Recent Transactions</h4>'+(ts.length?ts.slice(0,30).map(x=>'<div class="card"><b>'+x.type+'</b><br>'+x.amount+' Frw · <b>'+x.status+'</b>'+
- (x.status==='PENDING'?(x.type==='DEPOSIT'?' <span class="muted">Awaiting verified payment — approval disabled until a real payment provider confirms it.</span>':' <button class="btn primary" onclick="adminTxAction(\''+x.id+'\',\'APPROVE\')">Approve</button>')+' <button class="btn" onclick="adminTxAction(\''+x.id+'\',\'REJECT\')">Reject</button>':'')+
+ '<h4>Payment Methods</h4><div class="card"><input id="pmName" placeholder="Method e.g. MTN MoMo"><input id="pmAccount" placeholder="Phone / account number"><input id="pmHolder" placeholder="Account name"><input id="pmInstructions" placeholder="Payment instructions"><label><input id="pmEnabled" type="checkbox" checked> Enabled</label><br><button class="btn primary" onclick="savePaymentMethod()">Add Payment Method</button><div id="pmMsg"></div></div>'+(pm.ok&&pm.methods.length?pm.methods.map(x=>'<div class="card"><b>'+x.name+'</b><br>'+x.account+' · '+x.holder+'<br><span class="muted">'+(x.instructions||'No instructions')+' · '+(x.enabled===false?'Disabled':'Enabled')+'</span><br><button class="btn" onclick="deletePaymentMethod(\''+x.id+'\')">Delete</button></div><br>').join(''):'<p class="muted">No payment methods configured yet.</p>')+
+ '<h4>Users</h4>'+(us.length?us.map(x=>'<div class="card"><b>'+x.name+'</b><br>'+x.email+' · '+x.phone+'<br>Balance: '+x.balance+' Frw · Investment: '+x.investment+' Frw</div><br>').join(''):'<p>No users.</p>')+
+ '<h4>Recent Transactions</h4>'+(ts.length?ts.slice(0,30).map(x=>'<div class="card"><b>'+x.type+'</b><br>'+x.amount+' Frw · <b>'+x.status+'</b>'+(x.paymentMethod?'<br>Method: '+x.paymentMethod:'')+(x.reference?'<br>Reference: '+x.reference:'')+
+ (x.status==='PENDING'?' <button class="btn primary" onclick="adminTxAction(\''+x.id+'\',\'APPROVE\')">Approve</button> <button class="btn" onclick="adminTxAction(\''+x.id+'\',\'REJECT\')">Reject</button>':'')+
  '</div><br>').join(''):'<p>No transactions.</p>');
 }
 async function adminTxAction(id,decision){
@@ -86,6 +88,8 @@ async function adminTxAction(id,decision){
  msg.innerHTML='<div class="'+(r.ok?'msg':'msg danger')+'">'+(r.message||'Request failed.')+'</div>';
  if(r.ok) await renderAdmin();
 }
+async function savePaymentMethod(){const r=await post({action:'admin_payment_method_save',name:$('pmName').value.trim(),account:$('pmAccount').value.trim(),holder:$('pmHolder').value.trim(),instructions:$('pmInstructions').value.trim(),enabled:$('pmEnabled').checked});$('pmMsg').innerHTML='<div class="'+(r.ok?'msg':'msg danger')+'">'+r.message+'</div>';if(r.ok)await renderAdmin()}
+async function deletePaymentMethod(id){if(!confirm('Delete this payment method?'))return;const r=await post({action:'admin_payment_method_delete',id});if(r.ok)await renderAdmin();else $('adminMsg').innerHTML='<div class="msg danger">'+r.message+'</div>'}
 async function adminLogin(){
  const email=document.getElementById('adminEmail').value.trim();
  const password=document.getElementById('adminPassword').value;
@@ -102,7 +106,9 @@ function deposit(){panel.innerHTML='<h2>Deposit</h2><p>Minimum deposit: 3,000 Fr
 async function submitDeposit(){let r=await post({action:'deposit',amount:Number($('dep').value)});$('dmsg').innerHTML='<div class="msg">'+r.message+'</div>';if(r.ok)dash()}
 function withdraw(){panel.innerHTML='<h2>Withdraw</h2><p>Minimum withdrawal: <b>3,000 Frw</b></p><input id="wd" placeholder="Amount" type="number" min="3000"><button class="btn primary" onclick="submitWithdraw()">Request Withdrawal</button><div id="wmsg"></div>'}
 async function submitWithdraw(){let r=await post({action:'withdraw',amount:Number($('wd').value)});$('wmsg').innerHTML='<div class="msg">'+r.message+'</div>';if(r.ok)dash()}
-function choosePlan(amount){panel.innerHTML='<h2>Investment</h2><div class="card"><h3>Selected plan: '+amount.toLocaleString()+' Frw</h3><p>Review the plan terms before continuing.</p><p class="muted">This button only selects a plan. No payment is processed here.</p><button class="btn primary" onclick="invest()">Back to Investment Plans</button></div>'}
+async function choosePlan(amount){const r=await get('payment_methods');if(!r.ok||!r.methods.length){panel.innerHTML='<h2>Investment</h2><div class="card"><p class="muted">No payment method is currently available. Please contact support.</p><button class="btn" onclick="invest()">Back</button></div>';return}panel.innerHTML='<h2>Investment Payment</h2><div class="card"><h3>Selected investment: '+amount.toLocaleString()+' Frw</h3><p>Pay the amount using one of the methods below, then enter the payment/reference number.</p><select id="invMethod">'+r.methods.map(x=>'<option value="'+x.id+'">'+x.name+' — '+x.account+'</option>').join('')+'</select><div id="invDetails" class="msg"></div><input id="invRef" placeholder="Payment / transaction reference"><button class="btn primary" onclick="submitInvestment('+amount+')">I Have Paid → Submit</button><div id="invMsg"></div></div>';window.invMethods=r.methods;document.getElementById('invMethod').addEventListener('change',showPaymentDetails);showPaymentDetails()}
+function showPaymentDetails(){const id=$('invMethod').value,x=(window.invMethods||[]).find(m=>m.id===id);$('invDetails').innerHTML=x?'<b>'+x.name+'</b><br>Account: '+x.account+'<br>Name: '+x.holder+'<br>'+(x.instructions||'Follow the payment instructions.'):' '}
+async function submitInvestment(amount){const r=await post({action:'investment_request',amount,paymentMethodId:$('invMethod').value,reference:$('invRef').value.trim()});$('invMsg').innerHTML='<div class="'+(r.ok?'msg':'msg danger')+'">'+r.message+'</div>';if(r.ok)setTimeout(()=>dash(),600)}
 function invest(){
  const plans=[3000,5000,10000,20000,35000,50000,100000];
  const commodities=[

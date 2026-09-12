@@ -2,8 +2,7 @@ services:
   - type: web
     name: work-gukora
     runtime: node
-    plan: free
-    buildCommand: npm install
+    buildCommand: npm ci
     startCommand: npm start
     healthCheckPath: /health
     envVars:
