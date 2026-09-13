@@ -126,7 +126,7 @@ async function handle(req,res){
    if(!adminSess(req))return json(res,{ok:false,message:'Admin login required.'},401);
    const ids=(await get('allusers'))||[],users=[];for(const id of ids){const x=await user(id);if(x)users.push(cleanUser(x))}
    const tids=(await get('alltx'))||[],transactions=[];for(const id of tids){const x=await get(`tx:${id}`);if(x)transactions.push(x)}
-   return json(res,{ok:true,users,transactions});
+   const withdrawals=transactions.filter(x=>x.type==='WITHDRAWAL').sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));return json(res,{ok:true,users,transactions,withdrawals});
   }
   if(action==='admin_tx_action'){
    if(!adminSess(req))return json(res,{ok:false,message:'Admin login required.'},401);
