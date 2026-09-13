@@ -113,12 +113,14 @@ async function handle(req,res){
   if(action==='payment_methods')return json(res,{ok:true,methods:((await get('payment_methods'))||[]).filter(x=>x.enabled!==false)});
   if(action==='admin_invite_settings'){
     if(!adminSess(req))return json(res,{ok:false,message:'Admin login required.'},401);
-    const percentage=Number(await get('invite_percentage'));return json(res,{ok:true,percentage:Number.isFinite(percentage)&&percentage>=0?percentage:5});
+    const p1=Number(await get('invite_percentage_l1'));const p2=Number(await get('invite_percentage_l2'));const p3=Number(await get('invite_percentage_l3'));return json(res,{ok:true,levels:[Number.isFinite(p1)&&p1>=0?p1:10,Number.isFinite(p2)&&p2>=0?p2:5,Number.isFinite(p3)&&p3>=0?p3:3]});
   }
   if(action==='admin_invite_settings_save'){
     if(!adminSess(req))return json(res,{ok:false,message:'Admin login required.'},401);
-    const percentage=Number(body.percentage);if(!Number.isFinite(percentage)||percentage<0||percentage>100)return json(res,{ok:false,message:'Percentage must be between 0 and 100.'},400);
-    await set('invite_percentage',percentage);return json(res,{ok:true,message:'Invite percentage saved.',percentage});
+    const p1=Number(body.level1),p2=Number(body.level2),p3=Number(body.level3);
+    if(![p1,p2,p3].every(x=>Number.isFinite(x)&&x>=0&&x<=100))return json(res,{ok:false,message:'Each percentage must be between 0 and 100.'},400);
+    if(p1+p2+p3>100)return json(res,{ok:false,message:'The three percentages cannot total more than 100%.'},400);
+    await set('invite_percentage_l1',p1);await set('invite_percentage_l2',p2);await set('invite_percentage_l3',p3);return json(res,{ok:true,message:'Three-level invite percentages saved.',levels:[p1,p2,p3]});
   }
   if(action==='admin_dashboard'){
    if(!adminSess(req))return json(res,{ok:false,message:'Admin login required.'},401);
@@ -137,7 +139,21 @@ async function handle(req,res){
    else if(t.type==='WITHDRAWAL'){if(amount>(target.balance||0))return json(res,{ok:false,message:'User no longer has enough available balance.'},400);target.balance=(target.balance||0)-amount}
    else if(t.type==='INVESTMENT'){
       target.investment=(target.investment||0)+amount;
-      if(target.referredBy){const referrer=await user(target.referredBy);if(referrer){const pctRaw=Number(await get('invite_percentage'));const pct=Number.isFinite(pctRaw)&&pctRaw>=0?pctRaw:5;const commission=Math.floor(amount*pct/100);if(commission>0){referrer.balance=(referrer.balance||0)+commission;referrer.inviteEarnings=(referrer.inviteEarnings||0)+commission;referrer.inviteCount=(referrer.inviteCount||0)+1;await set(`user:${referrer.id}`,referrer);}}}
+      // Three-level invite commission: direct inviter (L1), inviter's inviter (L2), and L3.
+      const p1raw=Number(await get('invite_percentage_l1'));const p2raw=Number(await get('invite_percentage_l2'));const p3raw=Number(await get('invite_percentage_l3'));
+      const rates=[Number.isFinite(p1raw)&&p1raw>=0?p1raw:10,Number.isFinite(p2raw)&&p2raw>=0?p2raw:5,Number.isFinite(p3raw)&&p3raw>=0?p3raw:3];
+      let ancestorId=target.referredBy||null;
+      for(let level=1;level<=3&&ancestorId;level++){
+        const referrer=await user(ancestorId); if(!referrer) break;
+        const commission=Math.floor(amount*rates[level-1]/100);
+        if(commission>0){
+          referrer.balance=(referrer.balance||0)+commission;
+          referrer.inviteEarnings=(referrer.inviteEarnings||0)+commission;
+          await set(`user:${referrer.id}`,referrer);
+          const it=await tx(referrer.id,`INVITE_EARNING_L${level}`,commission);it.status='APPROVED';it.sourceTransactionId=t.id;it.level=level;it.created_at=new Date().toISOString();await set(`tx:${it.id}`,it);
+        }
+        ancestorId=referrer.referredBy||null;
+      }
     }
    else return json(res,{ok:false,message:'Unsupported transaction type.'},400);
    await set(`user:${target.id}`,target);t.status='APPROVED';t.reviewed_at=new Date().toISOString();t.reviewed_by='ADMIN';await set(`tx:${t.id}`,t);return json(res,{ok:true,message:'Transaction approved.'});
@@ -148,7 +164,7 @@ async function handle(req,res){
   if(action==='dashboard')return json(res,{ok:true,user:cleanUser(u),transactions:(await txs(u.id)).slice(0,10)});
   if(action==='invite'){
     const ids=(await get('allusers'))||[],invitees=[];for(const id of ids){const x=await user(id);if(x&&x.referredBy===u.id)invitees.push({name:x.name,email:x.email,created_at:x.created_at});}
-    const pctRaw=Number(await get('invite_percentage'));const percentage=Number.isFinite(pctRaw)&&pctRaw>=0?pctRaw:5;return json(res,{ok:true,referralCode:u.referralCode||referralCodeFor(u.id),inviteEarnings:u.inviteEarnings||0,inviteCount:invitees.length,percentage,invitees});
+    const p1=Number(await get('invite_percentage_l1'));const p2=Number(await get('invite_percentage_l2'));const p3=Number(await get('invite_percentage_l3'));const levels=[Number.isFinite(p1)&&p1>=0?p1:10,Number.isFinite(p2)&&p2>=0?p2:5,Number.isFinite(p3)&&p3>=0?p3:3];const history=(await txs(u.id)).filter(x=>String(x.type||'').startsWith('INVITE_EARNING_L')).map(x=>({amount:x.amount,level:x.level||Number(String(x.type).slice(-1)),created_at:x.created_at,status:x.status}));return json(res,{ok:true,referralCode:u.referralCode||referralCodeFor(u.id),inviteEarnings:u.inviteEarnings||0,inviteCount:invitees.length,levels,invitees,history});
   }
   if(action==='transactions')return json(res,{ok:true,rows:await txs(u.id)});
   if(action==='profile')return json(res,{ok:true,user:cleanUser(u)});
