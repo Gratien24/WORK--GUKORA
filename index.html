@@ -2,7 +2,7 @@
 <html lang="rw">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>WORK | GUKORA Invest & Earn</title>
+<title>MWAGD INVESTMENT</title>
 <style>
 :root{--g:#063b2c;--g2:#0b6b4d;--gold:#d9a321;--bg:#f5f7f6;--text:#13211c}
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
@@ -16,12 +16,12 @@ header{background:#fff;border-bottom:1px solid #e4e9e6;padding:15px 6%;display:f
 </style>
 </head>
 <body>
-<header><div class="logo">↗ WORK <small>GUKORA INVEST & EARN</small></div>
+<header><div class="logo">↗ MWAGD INVESTMENT</div>
 <nav><a href="#home">Home</a><a href="#how">How It Works</a><a href="#plans">Plans</a><a href="#support">Support</a></nav>
 <div><button class="btn primary" onclick="show('login')">Login</button> <button class="btn" onclick="show('admin')">Admin</button></div></header>
 
 <section id="home" class="hero"><div><h1>Invest Today,<br><span>Earn Tomorrow</span></h1>
-<p>WORK / GUKORA account dashboard. Investment terms, fees, risks and payment status should be clear before any real payment.</p>
+<p>MWAGD INVESTMENT account dashboard. Investment terms, fees, risks and payment status should be clear before any real payment.</p>
 <button class="btn gold" onclick="show('register')">Create Account →</button></div>
 <div class="phone"><h3>Account Preview</h3><div class="stat"><b>Balance</b><br><strong id="previewBalance">0 Frw</strong></div><div class="stat"><b>Investment</b><br><strong id="previewInvestment">0 Frw</strong></div></div></section>
 
@@ -38,21 +38,21 @@ header{background:#fff;border-bottom:1px solid #e4e9e6;padding:15px 6%;display:f
 <section id="auth" class="section hidden">
 <div id="login" class="form card"><h2>Login</h2><input id="loginEmail" placeholder="Email"><input id="loginPassword" type="password" placeholder="Password">
 <button class="btn primary" onclick="login()">Login</button><button class="btn" onclick="checkBackend()">Check Backend</button><div id="loginMsg"></div><p><a href="#" onclick="show('forgot');return false">Forgot password?</a></p><p class="muted">Use the account created on this site.</p></div>
-<div id="forgot" class="form card hidden"><h2>Forgot Password</h2><p>Enter your account email, then contact WORK Support to complete the password reset.</p><input id="forgotEmail" type="email" placeholder="Email"><button class="btn primary" onclick="forgotPassword()">Request Reset</button><a class="btn" id="supportReset" href="https://wa.me/250734351649?text=Hello%20WORK%20Support%2C%20I%20forgot%20my%20password.%20My%20account%20email%20is%3A%20" target="_blank">Contact Support on WhatsApp</a><div id="forgotMsg"></div><p><a href="#" onclick="show('login');return false">Back to Login</a></p></div>
+<div id="forgot" class="form card hidden"><h2>Forgot Password</h2><p>Enter your account email, then contact MWAGD INVESTMENT Support to complete the password reset.</p><input id="forgotEmail" type="email" placeholder="Email"><button class="btn primary" onclick="forgotPassword()">Request Reset</button><a class="btn" id="supportReset" href="https://wa.me/250734351649?text=Hello%20WORK%20Support%2C%20I%20forgot%20my%20password.%20My%20account%20email%20is%3A%20" target="_blank">Contact Support on WhatsApp</a><div id="forgotMsg"></div><p><a href="#" onclick="show('login');return false">Back to Login</a></p></div>
 <div id="admin" class="form card hidden"><h2>Admin / Leader</h2><p>Admin access is protected. Enter the credentials configured by the site owner in Render.</p><input id="adminEmail" type="email" placeholder="Admin email"><input id="adminPassword" type="password" placeholder="Admin password"><button class="btn primary" onclick="adminLogin()">Admin Login</button><div id="adminMsg"></div><div id="adminPanel" class="hidden"></div><p><a href="#" onclick="show('login');return false">Back to Login</a></p></div>
 <div id="reset" class="form card hidden"><h2>Set New Password</h2><input id="newPassword" type="password" placeholder="New password"><button class="btn primary" onclick="resetPassword()">Reset Password</button><div id="resetMsg"></div></div>
 <div id="register" class="form card hidden"><h2>Create Account</h2><input id="regName" placeholder="Full name"><input id="regPhone" placeholder="Phone"><input id="regEmail" type="email" placeholder="Email"><input id="regPassword" type="password" placeholder="Password">
 <button class="btn primary" onclick="register()">Create Account</button><div id="regMsg"></div></div></section>
 
 <section id="dashboard" class="section hidden"><div class="dashboard card">
-<aside class="side"><h2>WORK</h2><button onclick="dash()">Dashboard</button><button onclick="deposit()">Deposit</button><button onclick="withdraw()">Withdraw</button><button onclick="invest()">Investments</button><button onclick="transactions()">Transactions</button><button onclick="profile()">Profile</button><button onclick="logout()">Logout</button></aside>
+<aside class="side"><h2>MWAGD</h2><button onclick="dash()">Dashboard</button><button onclick="deposit()">Deposit</button><button onclick="withdraw()">Withdraw</button><button onclick="invest()">Investments</button><button onclick="transactions()">Transactions</button><button onclick="profile()">Profile</button><button onclick="logout()">Logout</button></aside>
 <main class="main"><div id="panel"><h2>Dashboard</h2><p>Loading...</p></div></main></div></section>
 
 <section id="support" class="section"><h2>Help Center & Support</h2><div class="grid">
 <div class="card"><h3>WhatsApp</h3><p>+250 734 351 649</p><a class="btn primary" href="https://wa.me/250734351649">Chat</a></div>
 <div class="card"><h3>Call Center</h3><p>+250 734 351 649</p><a class="btn primary" href="tel:+250734351649">Call</a></div>
 <div class="card"><h3>Help Center</h3><p>Account, deposits, withdrawals and security help.</p></div></div></section>
-<footer>© 2026 WORK / GUKORA Invest & Earn · Terms · Privacy · Risk Disclosure</footer>
+<footer>© 2026 MWAGD INVESTMENT · Terms · Privacy · Risk Disclosure</footer>
 
 <script>
 
@@ -63,7 +63,7 @@ function show(id){document.querySelectorAll('#auth>div,#dashboard').forEach(x=>x
  if(['login','register','forgot','reset','admin'].includes(id)){$('auth').classList.remove('hidden');$(id).classList.remove('hidden');location.hash='auth';$('auth').scrollIntoView({behavior:'smooth'});}
  if(id==='dashboard'){$('dashboard').classList.remove('hidden');location.hash='dashboard';$('dashboard').scrollIntoView({behavior:'smooth'});dash();}
 }
-async function post(data){try{const r=await fetch(api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),credentials:'same-origin',cache:'no-store'});const t=await r.text();let j;try{j=JSON.parse(t)}catch{return {ok:false,message:'Backend returned an invalid response (HTTP '+r.status+'). Check the Render service deployment.'}};return j}catch(e){return {ok:false,message:'Cannot reach the WORK backend. Check the Render service and its logs.'}}}
+async function post(data){try{const r=await fetch(api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),credentials:'same-origin',cache:'no-store'});const t=await r.text();let j;try{j=JSON.parse(t)}catch{return {ok:false,message:'Backend returned an invalid response (HTTP '+r.status+'). Check the Render service deployment.'}};return j}catch(e){return {ok:false,message:'Cannot reach the MWAGD INVESTMENT backend. Check the Render service and its logs.'}}}
 async function checkBackend(){const r=await get('health');$('loginMsg').innerHTML='<div class="'+(r.ok?'msg':'msg danger')+'">'+(r.message||'Backend check failed.')+'</div>'}
 async function register(){const d={action:'register',name:$('regName').value.trim(),phone:$('regPhone').value.trim(),email:$('regEmail').value.trim(),password:$('regPassword').value};const r=await post(d);$('regMsg').innerHTML='<div class="'+(r.ok?'msg':'msg danger')+'">'+(r.message||'Request failed.')+'</div>';if(r.ok){setTimeout(()=>show('dashboard'),50)}}
 async function login(){const email=$('loginEmail').value.trim(),password=$('loginPassword').value;const r=await post({action:'login',email,password});$('loginMsg').innerHTML='<div class="'+(r.ok?'msg':'msg danger')+'">'+(r.message||'Login failed.')+'</div>';if(r.ok){setTimeout(()=>show('dashboard'),50)}}
@@ -98,7 +98,7 @@ async function adminLogin(){
  msg.innerHTML='<div class="'+(r.ok?'msg':'msg danger')+'">'+(r.message||'Login failed.')+'</div>';
  if(r.ok) await renderAdmin();
 }
-async function forgotPassword(){let email=forgotEmail.value.trim();let r=await post({action:'forgot_password',email});forgotMsg.innerHTML='<div class="'+(r.ok?'msg':'msg danger')+'">'+(r.message||'Please contact WORK Support.')+'</div>';if(email){let a=document.getElementById('supportReset');a.href='https://wa.me/250734351649?text='+encodeURIComponent('Hello WORK Support, I forgot my password. My account email is: '+email)}}
+async function forgotPassword(){let email=forgotEmail.value.trim();let r=await post({action:'forgot_password',email});forgotMsg.innerHTML='<div class="'+(r.ok?'msg':'msg danger')+'">'+(r.message||'Please contact MWAGD INVESTMENT Support.')+'</div>';if(email){let a=document.getElementById('supportReset');a.href='https://wa.me/250734351649?text='+encodeURIComponent('Hello MWAGD INVESTMENT Support, I forgot my password. My account email is: '+email)}}
 async function resetPassword(){let token=new URLSearchParams(location.search).get('reset');let r=await post({action:'reset_password',token,password:$('newPassword').value});resetMsg.innerHTML='<div class="'+(r.ok?'msg':'msg danger')+'">'+r.message+'</div>';if(r.ok){history.replaceState({},'',location.pathname);show('login')}}
 async function get(action){try{let r=await fetch(api+'?action='+encodeURIComponent(action),{credentials:'same-origin'});let t=await r.text();try{return JSON.parse(t)}catch{return {ok:false,message:'Server response was not valid JSON. HTTP '+r.status}}}catch(e){return {ok:false,message:'Cannot reach backend. Check that the Render service is running.'}}}
 async function dash(){let r=await get('dashboard');if(!r.ok){show('login');return}panel.innerHTML=`<h2>Dashboard</h2><div class="grid"><div class="card"><b>Balance</b><h2>${r.user.balance} Frw</h2></div><div class="card"><b>Total Investment</b><h2>${r.user.investment} Frw</h2></div><div class="card"><b>Profit</b><h2>${r.user.profit} Frw</h2></div></div><br><div class="card"><h3>Recent Transactions</h3>${r.transactions.length?r.transactions.map(x=>'<p>'+x.type+' — '+x.amount+' Frw — '+x.status+'</p>').join(''):'<p class="muted">No transactions yet.</p>'}</div>`}

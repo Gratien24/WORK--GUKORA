@@ -1,12 +1,12 @@
 {
-  "name": "GUKORA Invest & Earn",
-  "short_name": "GUKORA",
+  "name": "MWAGD INVESTMENT",
+  "short_name": "MWAGD",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f5f7f6",
   "theme_color": "#063b2c",
-  "description": "GUKORA account dashboard and investment demo.",
+  "description": "MWAGD INVESTMENT account dashboard and investment demo.",
   "icons": [
     {
       "src": "/icon-192.png",

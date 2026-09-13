@@ -1,4 +1,4 @@
-# WORK GUKORA — Render-ready
+# MWAGD INVESTMENT — Render-ready
 
 ## What is included
 - Node.js + Express backend at `/api`
