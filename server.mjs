@@ -57,7 +57,8 @@ function clearCookie(res,name){res.clearCookie(name,{httpOnly:true,secure:reqSec
 function adminSess(req){const d=verifySigned(req.cookies?.work_admin);return d?.admin?d:null}
 function userSess(req){return verifySigned(req.cookies?.work_session)}
 function json(res,body,status=200){res.status(status).json(body)}
-function cleanUser(u){return {id:u.id,name:u.name,phone:u.phone,email:u.email,balance:u.balance||0,investment:u.investment||0,profit:u.profit||0}}
+function referralCodeFor(id){return String(id||'').replace(/-/g,'').slice(0,8).toUpperCase() || crypto.randomBytes(4).toString('hex').toUpperCase()}
+function cleanUser(u){return {id:u.id,name:u.name,phone:u.phone,email:u.email,balance:u.balance||0,investment:u.investment||0,profit:u.profit||0,referralCode:u.referralCode||referralCodeFor(u.id),referredBy:u.referredBy||null,inviteEarnings:u.inviteEarnings||0,inviteCount:u.inviteCount||0}}
 async function user(id){return get(`user:${id}`)}
 async function byEmail(e){const x=await get(`email:${e}`);return x?user(x.id):null}
 async function tx(uid,type,amount){const t={id:crypto.randomUUID(),userId:uid,type,amount,status:'PENDING',created_at:new Date().toISOString()};await set(`tx:${t.id}`,t);const a=(await get(`txindex:${uid}`))||[];a.unshift(t.id);await set(`txindex:${uid}`,a.slice(0,100));const all=(await get('alltx'))||[];all.unshift(t.id);await set('alltx',all.slice(0,1000));return t}
@@ -74,7 +75,10 @@ async function handle(req,res){
    const name=String(body.name||'').trim(), phone=String(body.phone||'').trim(), email=String(body.email||'').trim().toLowerCase(), password=String(body.password||'');
    if(!name||!phone||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||password.length<8)return json(res,{ok:false,message:'Fill all fields. Password must be at least 8 characters.'},400);
    if(await byEmail(email))return json(res,{ok:false,message:'That email is already registered.'},409);
-   const id=crypto.randomUUID(),u={id,name,phone,email,password_hash:hashPassword(password),balance:0,investment:0,profit:0,created_at:new Date().toISOString()};
+   const id=crypto.randomUUID(),ref=String(body.ref||'').trim().toUpperCase();
+    let referrer=null;
+    if(ref){const ids=(await get('allusers'))||[];for(const rid of ids){const candidate=await user(rid);if(candidate&&(candidate.referralCode||referralCodeFor(candidate.id))===ref){referrer=candidate;break}}}
+    const u={id,name,phone,email,password_hash:hashPassword(password),balance:0,investment:0,profit:0,referralCode:referralCodeFor(id),referredBy:referrer?.id||null,inviteEarnings:0,inviteCount:0,created_at:new Date().toISOString()};
    await set(`user:${id}`,u);await set(`email:${email}`,{id});const users=(await get('allusers'))||[];users.unshift(id);await set('allusers',users.slice(0,1000));
    setCookie(res,'work_session',{userId:id,exp:Date.now()+604800000},604800000);return json(res,{ok:true,message:'Account created successfully.'});
   }
@@ -107,6 +111,15 @@ async function handle(req,res){
    const id=String(body.id||''); const methods=((await get('payment_methods'))||[]).filter(x=>x.id!==id); await set('payment_methods',methods); return json(res,{ok:true,message:'Payment method deleted.'});
   }
   if(action==='payment_methods')return json(res,{ok:true,methods:((await get('payment_methods'))||[]).filter(x=>x.enabled!==false)});
+  if(action==='admin_invite_settings'){
+    if(!adminSess(req))return json(res,{ok:false,message:'Admin login required.'},401);
+    const percentage=Number(await get('invite_percentage'));return json(res,{ok:true,percentage:Number.isFinite(percentage)&&percentage>=0?percentage:5});
+  }
+  if(action==='admin_invite_settings_save'){
+    if(!adminSess(req))return json(res,{ok:false,message:'Admin login required.'},401);
+    const percentage=Number(body.percentage);if(!Number.isFinite(percentage)||percentage<0||percentage>100)return json(res,{ok:false,message:'Percentage must be between 0 and 100.'},400);
+    await set('invite_percentage',percentage);return json(res,{ok:true,message:'Invite percentage saved.',percentage});
+  }
   if(action==='admin_dashboard'){
    if(!adminSess(req))return json(res,{ok:false,message:'Admin login required.'},401);
    const ids=(await get('allusers'))||[],users=[];for(const id of ids){const x=await user(id);if(x)users.push(cleanUser(x))}
@@ -122,7 +135,10 @@ async function handle(req,res){
    const amount=Math.floor(Number(t.amount||0));if(!Number.isFinite(amount)||amount<=0)return json(res,{ok:false,message:'Invalid transaction amount.'},400);
    if(t.type==='DEPOSIT')target.balance=(target.balance||0)+amount;
    else if(t.type==='WITHDRAWAL'){if(amount>(target.balance||0))return json(res,{ok:false,message:'User no longer has enough available balance.'},400);target.balance=(target.balance||0)-amount}
-   else if(t.type==='INVESTMENT'){target.investment=(target.investment||0)+amount}
+   else if(t.type==='INVESTMENT'){
+      target.investment=(target.investment||0)+amount;
+      if(target.referredBy){const referrer=await user(target.referredBy);if(referrer){const pctRaw=Number(await get('invite_percentage'));const pct=Number.isFinite(pctRaw)&&pctRaw>=0?pctRaw:5;const commission=Math.floor(amount*pct/100);if(commission>0){referrer.balance=(referrer.balance||0)+commission;referrer.inviteEarnings=(referrer.inviteEarnings||0)+commission;referrer.inviteCount=(referrer.inviteCount||0)+1;await set(`user:${referrer.id}`,referrer);}}}
+    }
    else return json(res,{ok:false,message:'Unsupported transaction type.'},400);
    await set(`user:${target.id}`,target);t.status='APPROVED';t.reviewed_at=new Date().toISOString();t.reviewed_by='ADMIN';await set(`tx:${t.id}`,t);return json(res,{ok:true,message:'Transaction approved.'});
   }
@@ -130,6 +146,10 @@ async function handle(req,res){
   if(action==='reset_password')return json(res,{ok:false,message:'Password reset links require an email provider configuration.'},503);
   const s=userSess(req);if(!s)return json(res,{ok:false,message:'Please login first.'},401);const u=await user(s.userId);if(!u)return json(res,{ok:false,message:'Account not found.'},404);
   if(action==='dashboard')return json(res,{ok:true,user:cleanUser(u),transactions:(await txs(u.id)).slice(0,10)});
+  if(action==='invite'){
+    const ids=(await get('allusers'))||[],invitees=[];for(const id of ids){const x=await user(id);if(x&&x.referredBy===u.id)invitees.push({name:x.name,email:x.email,created_at:x.created_at});}
+    const pctRaw=Number(await get('invite_percentage'));const percentage=Number.isFinite(pctRaw)&&pctRaw>=0?pctRaw:5;return json(res,{ok:true,referralCode:u.referralCode||referralCodeFor(u.id),inviteEarnings:u.inviteEarnings||0,inviteCount:invitees.length,percentage,invitees});
+  }
   if(action==='transactions')return json(res,{ok:true,rows:await txs(u.id)});
   if(action==='profile')return json(res,{ok:true,user:cleanUser(u)});
   if(action==='deposit'){const a=Math.floor(Number(body.amount||0));if(a<3000)return json(res,{ok:false,message:'Minimum deposit is 3,000 Frw.'},400);const pm=String(body.paymentMethodId||'');const methods=((await get('payment_methods'))||[]).filter(x=>x.enabled!==false);if(pm&&!methods.some(x=>x.id===pm))return json(res,{ok:false,message:'Selected payment method is unavailable.'},400);const t=await tx(u.id,'DEPOSIT',a);t.paymentMethodId=pm;t.reference=String(body.reference||'').trim();await set(`tx:${t.id}`,t);return json(res,{ok:true,message:'Deposit request recorded as PENDING. No real payment was processed.'})}
