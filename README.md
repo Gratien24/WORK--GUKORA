@@ -33,3 +33,12 @@ The investment return figures shown in the UI are examples only and are not guar
 4. Run `npm start`.
 5. Open `http://localhost:10000`.
 6. Check `http://localhost:10000/health`.
+
+
+## Invite & Earnings
+- Every account receives a unique invite code and shareable invite link.
+- Registration accepts an optional invite code; links use `/?ref=MWAGD-XXXXXXX`.
+- Admin can set the invite earning percentage from the Admin Dashboard (default: 5%).
+- When an invited user's **investment transaction is approved**, the configured percentage is credited to the referrer's balance and `inviteEarnings`.
+- Invite earnings are recorded as `INVITE_EARNING` transactions.
+- This feature is part of the demo/testing app. Use a persistent production database and appropriate licensed payment/legal setup before real-money use.
