@@ -42,3 +42,10 @@ The investment return figures shown in the UI are examples only and are not guar
 - When an invited user's **investment transaction is approved**, the configured percentage is credited to the referrer's balance and `inviteEarnings`.
 - Invite earnings are recorded as `INVITE_EARNING` transactions.
 - This feature is part of the demo/testing app. Use a persistent production database and appropriate licensed payment/legal setup before real-money use.
+
+
+### Automatic Invite Code
+- Invite links use `?ref=...`.
+- The invite code is captured automatically when a new user opens the link.
+- The registration form no longer asks the user to type an invite code.
+- The captured code is kept during registration and sent to the backend automatically.
